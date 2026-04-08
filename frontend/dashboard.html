@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Plant Disease Detection</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Professional Dashboard Header -->
+        <header class="dashboard-header">
+            <div class="container">
+                <div class="header-content">
+                    <a href="#" class="logo">
+                        <div class="logo-icon">🌿</div>
+                        <span>PlantAI</span>
+                    </a>
+                    <nav class="nav-menu">
+                        <a href="#dashboard" class="nav-link active" data-section="dashboard">Dashboard</a>
+                        <a href="#history" class="nav-link" data-section="history">History</a>
+                        <a href="#settings" class="nav-link" data-section="settings">Settings</a>
+                        <button id="logout-btn" class="btn btn-secondary" style="width: auto; padding: 0.75rem 1.5rem; font-size: 0.875rem;">
+                            Logout
+                        </button>
+                    </nav>
+                </div>
+            </div>
+        </header>
+
+        <!-- Professional Dashboard Content -->
+        <main class="dashboard-content">
+            <div class="container">
+                <!-- Welcome Section -->
+                <section class="welcome-card fade-in">
+                    <div class="welcome-header">
+                        <h2>Welcome back, <span id="username">User</span>! 🌱</h2>
+                        <p>Upload plant images to detect diseases and get AI-powered recommendations for treatment</p>
+                    </div>
+                </section>
+
+                <!-- Upload Section -->
+                <section class="upload-section slide-up">
+                    <h3>🔬 Disease Detection</h3>
+                    <div class="upload-container">
+                        <div class="upload-area" id="uploadArea">
+                            <div class="upload-icon">📸</div>
+                            <p class="upload-text">Click to upload or drag and drop</p>
+                            <p class="upload-hint">PNG, JPG, JPEG up to 16MB</p>
+                            <input type="file" id="fileInput" accept="image/*" hidden>
+                        </div>
+                        
+                        <div class="preview-container" id="previewContainer" style="display: none;">
+                            <img id="previewImage" alt="Preview" style="width: 100%; max-height: 300px; object-fit: cover; border-radius: 12px; margin-bottom: 1.5rem;">
+                            <div class="preview-actions">
+                                <button id="detectBtn" class="btn btn-primary" style="width: auto; padding: 1rem 2rem;">
+                                    🚀 Detect Disease
+                                </button>
+                                <button id="clearBtn" class="btn btn-secondary" style="width: auto; padding: 1rem 2rem;">
+                                    🗑️ Clear
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Results Section -->
+                <section class="results-section" id="resultsSection" style="display: none;">
+                    <h3>📊 Detection Results</h3>
+                    <div class="result-card">
+                        <div class="result-header">
+                            <h4 class="result-title" id="diseaseName">Analyzing...</h4>
+                            <span class="confidence-badge" id="confidenceScore">0%</span>
+                        </div>
+                        <div class="result-body">
+                            <p class="result-description" id="diseaseDescription"></p>
+                            <div class="recommendations">
+                                <h4>💡 Treatment Recommendations</h4>
+                                <ul id="recommendationsList"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- History Section -->
+                <section class="history-section scale-in">
+                    <h3>📈 Detection History</h3>
+                    <div class="history-grid" id="historyContainer">
+                        <p class="text-center" style="grid-column: 1 / -1; color: var(--text-secondary); font-style: italic;">
+                            No detection history available
+                        </p>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Professional Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">Analyzing image with AI...</p>
+    </div>
+    
+    <script src="dashboard.js"></script>
+</body>
+</html>
