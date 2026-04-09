@@ -1,6 +1,5 @@
 from flask import Flask, jsonify
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager
 import os
 from dotenv import load_dotenv
 from db import db
@@ -9,19 +8,14 @@ load_dotenv()
 
 app = Flask(__name__)
 
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
 app.config['UPLOAD_FOLDER'] = os.getenv('UPLOAD_FOLDER', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = int(os.getenv('MAX_CONTENT_LENGTH', 16777216))
-
-jwt = JWTManager(app)
 CORS(app)
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-from routes.auth import auth_bp
 from routes.predict import predict_bp
 
-app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(predict_bp, url_prefix='/api/predict')
 
 @app.route('/api/health', methods=['GET'])

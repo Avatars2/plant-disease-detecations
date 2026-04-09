@@ -23,11 +23,36 @@ function hideError(form) {
     }
 }
 
+// Show loading state
+function showLoading(form, button) {
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnSpinner = submitBtn.querySelector('.btn-spinner');
+        if (btnText) btnText.style.opacity = '0';
+        if (btnSpinner) btnSpinner.style.display = 'block';
+    }
+}
+
+// Hide loading state
+function hideLoading(form) {
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = false;
+        const btnText = submitBtn.querySelector('.btn-text');
+        const btnSpinner = submitBtn.querySelector('.btn-spinner');
+        if (btnText) btnText.style.opacity = '1';
+        if (btnSpinner) btnSpinner.style.display = 'none';
+    }
+}
+
 // Login functionality
 if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         hideError('login');
+        showLoading(loginForm);
         
         const formData = new FormData(loginForm);
         const loginData = {
@@ -59,6 +84,8 @@ if (loginForm) {
         } catch (error) {
             console.error('Login error:', error);
             showError('login', 'Network error. Please try again.');
+        } finally {
+            hideLoading(loginForm);
         }
     });
 }
@@ -68,6 +95,7 @@ if (registerForm) {
     registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         hideError('register');
+        showLoading(registerForm);
         
         const formData = new FormData(registerForm);
         const registerData = {
@@ -101,6 +129,8 @@ if (registerForm) {
         } catch (error) {
             console.error('Registration error:', error);
             showError('register', 'Network error. Please try again.');
+        } finally {
+            hideLoading(registerForm);
         }
     });
 }
@@ -163,3 +193,20 @@ document.getElementById('register-phone').addEventListener('blur', function() {
         this.setCustomValidity('');
     }
 });
+
+// Password toggle functionality
+const passwordToggle = document.getElementById('passwordToggle');
+const passwordInput = document.getElementById('login-password');
+
+if (passwordToggle && passwordInput) {
+    passwordToggle.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        
+        // Update icon
+        const toggleIcon = this.querySelector('.toggle-icon');
+        if (toggleIcon) {
+            toggleIcon.textContent = type === 'password' ? '👁️' : '🔒';
+        }
+    });
+}

@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Plant Disease Detection</title>
+    <meta name="viewport" content="width=1200, initial-scale=1.0">
+    <title>PlantAI - Advanced Plant Disease Detection</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>">
 </head>
 <body>
     <div class="dashboard-container">
@@ -22,10 +23,9 @@
                     <nav class="nav-menu">
                         <a href="#dashboard" class="nav-link active" data-section="dashboard">Dashboard</a>
                         <a href="#history" class="nav-link" data-section="history">History</a>
-                        <a href="#settings" class="nav-link" data-section="settings">Settings</a>
-                        <button id="logout-btn" class="btn btn-secondary" style="width: auto; padding: 0.75rem 1.5rem; font-size: 0.875rem;">
-                            Logout
-                        </button>
+                        <a href="index.html" class="btn btn-secondary" style="width: auto; padding: 0.75rem 1.5rem; font-size: 0.875rem;">
+                            Home
+                        </a>
                     </nav>
                 </div>
             </div>
@@ -37,14 +37,33 @@
                 <!-- Welcome Section -->
                 <section class="welcome-card fade-in">
                     <div class="welcome-header">
-                        <h2>Welcome back, <span id="username">User</span>! 🌱</h2>
-                        <p>Upload plant images to detect diseases and get AI-powered recommendations for treatment</p>
+                        <div class="welcome-stats">
+                            <div class="stat-item">
+                                <div class="stat-number" id="totalDetections">0</div>
+                                <div class="stat-label">Total Detections</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number" id="healthyCount">0</div>
+                                <div class="stat-label">Healthy Plants</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number" id="diseaseCount">0</div>
+                                <div class="stat-label">Diseases Found</div>
+                            </div>
+                        </div>
+                        <h2>Welcome to PlantAI! 🌱</h2>
+                        <p>Upload plant images to detect diseases and get AI-powered treatment recommendations</p>
                     </div>
                 </section>
 
                 <!-- Upload Section -->
                 <section class="upload-section slide-up">
-                    <h3>🔬 Disease Detection</h3>
+                    <div class="section-header">
+                        <h3>🔬 Disease Detection</h3>
+                        <div class="upload-tips">
+                            <span class="tip">💡 Tip: Use clear, well-lit images for best results</span>
+                        </div>
+                    </div>
                     <div class="upload-container">
                         <div class="upload-area" id="uploadArea">
                             <div class="upload-icon">📸</div>
@@ -87,11 +106,9 @@
 
                 <!-- History Section -->
                 <section class="history-section scale-in">
-                    <h3>📈 Detection History</h3>
+                    <h3>Detection History</h3>
                     <div class="history-grid" id="historyContainer">
-                        <p class="text-center" style="grid-column: 1 / -1; color: var(--text-secondary); font-style: italic;">
-                            No detection history available
-                        </p>
+                        <!-- Detection History Cards will be dynamically inserted here -->
                     </div>
                 </section>
             </div>

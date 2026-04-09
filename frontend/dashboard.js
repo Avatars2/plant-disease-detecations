@@ -3,7 +3,6 @@ const API_BASE_URL = 'http://localhost:5000/api';
 
 // DOM Elements
 const usernameElement = document.getElementById('username');
-const logoutBtn = document.getElementById('logout-btn');
 const fileInput = document.getElementById('fileInput');
 const uploadArea = document.getElementById('uploadArea');
 const previewContainer = document.getElementById('previewContainer');
@@ -14,64 +13,74 @@ const resultsSection = document.getElementById('resultsSection');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const historyContainer = document.getElementById('historyContainer');
 
+// Statistics Elements
+const totalDetectionsElement = document.getElementById('totalDetections');
+const healthyCountElement = document.getElementById('healthyCount');
+const diseaseCountElement = document.getElementById('diseaseCount');
+
 // User data
 let currentUser = null;
 let detectionHistory = [];
 
 // Initialize dashboard
 document.addEventListener('DOMContentLoaded', async () => {
-    await checkAuth();
     loadUserData();
     loadDetectionHistory();
+    updateStatistics();
     setupEventListeners();
+    setupPageCloseHandlers();
 });
 
-// Check authentication
-async function checkAuth() {
-    const token = localStorage.getItem('token');
-    
-    if (!token) {
-        window.location.href = 'index.html';
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/auth/profile`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error('Invalid token');
-        }
-        
-        const result = await response.json();
-        currentUser = result.user;
-    } catch (error) {
-        console.error('Auth check failed:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = 'index.html';
-    }
-}
 
 // Load user data
 function loadUserData() {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-        const user = JSON.parse(userData);
-        if (usernameElement) {
-            usernameElement.textContent = user.username;
+    if (usernameElement) {
+        usernameElement.textContent = "User";
+    }
+}
+
+// Update statistics
+function updateStatistics() {
+    const totalDetections = detectionHistory.length;
+    const healthyCount = detectionHistory.filter(item => 
+        item.disease && item.disease.toLowerCase() === 'healthy'
+    ).length;
+    const diseaseCount = totalDetections - healthyCount;
+    
+    // Update DOM with animation
+    if (totalDetectionsElement) {
+        animateNumber(totalDetectionsElement, totalDetections);
+    }
+    if (healthyCountElement) {
+        animateNumber(healthyCountElement, healthyCount);
+    }
+    if (diseaseCountElement) {
+        animateNumber(diseaseCountElement, diseaseCount);
+    }
+}
+
+// Animate number counting
+function animateNumber(element, target) {
+    const start = parseInt(element.textContent) || 0;
+    const duration = 1000;
+    const startTime = performance.now();
+    
+    function update(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const current = Math.floor(start + (target - start) * progress);
+        element.textContent = current;
+        
+        if (progress < 1) {
+            requestAnimationFrame(update);
         }
     }
+    
+    requestAnimationFrame(update);
 }
 
 // Setup event listeners
 function setupEventListeners() {
-    // Logout
-    logoutBtn.addEventListener('click', logout);
-    
     // Navigation
     document.querySelectorAll('.nav-link').forEach(link => {
         link.addEventListener('click', (e) => {
@@ -99,12 +108,6 @@ function setupEventListeners() {
     clearBtn.addEventListener('click', clearImage);
 }
 
-// Logout functionality
-function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = 'index.html';
-}
 
 // File handling
 function handleFileSelect(event) {
@@ -185,12 +188,8 @@ async function detectDisease() {
     formData.append('file', window.currentFile);
     
     try {
-        const token = localStorage.getItem('token');
         const response = await fetch(`${API_BASE_URL}/predict/upload`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
             body: formData
         });
         
@@ -352,11 +351,42 @@ function addToHistory(result) {
         detectionHistory = detectionHistory.slice(0, 10);
     }
     
-    // Save to localStorage
-    localStorage.setItem('detectionHistory', JSON.stringify(detectionHistory));
+    // Save to localStorage (persistent storage)
+    try {
+        localStorage.setItem('plantDetectionHistory', JSON.stringify(detectionHistory));
+    } catch (error) {
+        console.error('Failed to save to localStorage:', error);
+        // Fallback to sessionStorage if localStorage is full
+        sessionStorage.setItem('detectionHistory', JSON.stringify(detectionHistory));
+    }
     
-    // Update display
+    // Update statistics and display
+    updateStatistics();
     updateHistoryDisplay();
+}
+
+// Storage management - save data persistently
+function setupPageCloseHandlers() {
+    // Handle visibility change (when user switches tabs)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            // Save any unsaved data before tab becomes hidden
+            try {
+                localStorage.setItem('plantDetectionHistory', JSON.stringify(detectionHistory));
+            } catch (error) {
+                console.error('Failed to save data before tab switch:', error);
+            }
+        }
+    });
+    
+    // Handle page unload - save data one final time
+    window.addEventListener('unload', () => {
+        try {
+            localStorage.setItem('plantDetectionHistory', JSON.stringify(detectionHistory));
+        } catch (error) {
+            // Silently fail on unload as we can't show errors
+        }
+    });
 }
 
 // Switch between sections
@@ -387,33 +417,40 @@ function switchSection(section) {
     }
 }
 
-// Load detection history from API
+// Load detection history from persistent storage
 async function loadDetectionHistory() {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    
     try {
-        const response = await fetch(`${API_BASE_URL}/predict/history`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+        // Try to load from localStorage first (persistent storage)
+        let saved = localStorage.getItem('plantDetectionHistory');
+        if (!saved) {
+            // Fallback to sessionStorage for backward compatibility
+            saved = sessionStorage.getItem('detectionHistory');
+        }
         
-        if (response.ok) {
-            const result = await response.json();
-            if (result.success) {
-                detectionHistory = result.history;
-                updateHistoryDisplay();
+        if (saved) {
+            detectionHistory = JSON.parse(saved);
+            updateHistoryDisplay();
+        } else {
+            // If no local data, try API as fallback
+            try {
+                const response = await fetch(`${API_BASE_URL}/predict/history`);
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.history) {
+                        detectionHistory = result.history;
+                        // Save locally for offline access
+                        localStorage.setItem('plantDetectionHistory', JSON.stringify(detectionHistory));
+                        updateHistoryDisplay();
+                    }
+                }
+            } catch (apiError) {
+                console.log('API fallback failed, using empty history');
             }
         }
     } catch (error) {
         console.error('Failed to load history:', error);
-        // Fallback to localStorage
-        const saved = localStorage.getItem('detectionHistory');
-        if (saved) {
-            detectionHistory = JSON.parse(saved);
-            updateHistoryDisplay();
-        }
+        detectionHistory = [];
+        updateHistoryDisplay();
     }
 }
 
@@ -445,14 +482,31 @@ function updateHistoryDisplay() {
         if (confidence >= 80) confidenceClass = 'confidence-high';
         else if (confidence >= 60) confidenceClass = 'confidence-medium';
         
+        // Determine disease status for styling
+        const disease = item.predicted_disease || item.disease || 'Unknown';
+        let statusClass = 'status-unknown';
+        let statusText = 'Unknown';
+        
+        if (disease.toLowerCase() === 'healthy') {
+            statusClass = 'status-healthy';
+            statusText = 'Healthy';
+        } else if (disease.toLowerCase() !== 'unknown') {
+            statusClass = 'status-disease';
+            statusText = 'Disease Detected';
+        }
+        
         historyItem.innerHTML = `
-            <div class="history-item-header">
-                <h4>${item.predicted_disease || item.disease || 'Unknown'}</h4>
-                <span class="confidence-badge ${confidenceClass}">${Math.round(confidence)}%</span>
+            <div class="history-image-container">
+                <img src="${item.image || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0xMjUgNzVIMTc1VjEyNUgxMjVWNzVaIiBmaWxsPSIjREREIi8+Cjx0ZXh0IHg9IjE1MCIgeT0iMTA1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTk5IiBmb250LXNpemU9IjE0Ij5ObyBJbWFnZTwvdGV4dD4KPHN2Zz4K'}" alt="${disease}" class="history-image" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDMwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIzMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik0xMjUgNzVIMTc1VjEyNUgxMjVWNzVaIiBmaWxsPSIjREREIi8+Cjx0ZXh0IHg9IjE1MCIgeT0iMTA1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTk5IiBmb250LXNpemU9IjE0Ij5JbWFnZSBFcnJvcjwvdGV4dD4KPHN2Zz4K'">
+                <div class="history-overlay">
+                    <span class="history-status ${statusClass}">${statusText}</span>
+                </div>
             </div>
-            <div class="history-item-body">
-                <p class="history-filename">📁 ${item.original_filename || 'Unknown file'}</p>
-                <p class="history-date">🕒 ${formattedDate}</p>
+            <div class="history-content">
+                <h4 class="history-title">${disease}</h4>
+                <p class="history-confidence">Confidence: ${Math.round(confidence)}%</p>
+                <p class="history-date">${formattedDate}</p>
+                <p class="history-filename">📁 ${item.original_filename || 'Uploaded image'}</p>
             </div>
         `;
         

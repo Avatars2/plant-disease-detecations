@@ -1,5 +1,4 @@
 from flask import Blueprint, request, jsonify, current_app
-from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 import os
 import sys
@@ -197,11 +196,8 @@ def predict_disease(image_path):
         return None
 
 @predict_bp.route('/upload', methods=['POST'])
-@jwt_required()
 def upload_and_predict():
     try:
-        from bson import ObjectId
-        user_id = ObjectId(get_jwt_identity())
         
         if 'file' not in request.files:
             return jsonify({'error': 'No file provided'}), 400
@@ -262,7 +258,6 @@ def upload_and_predict():
             all_predictions = [prediction_result]
         
         result = {
-            'user_id': user_id,
             'filename': unique_filename,
             'original_filename': filename,
             'predicted_disease': predicted_class,
@@ -288,32 +283,16 @@ def upload_and_predict():
                 'ensemble_used': prediction_result.get('ensemble_used', False)
             }
         }), 200
-        
     except Exception as e:
         return jsonify({'error': 'Internal server error'}), 500
 
 @predict_bp.route('/history', methods=['GET'])
-@jwt_required()
 def get_prediction_history():
     try:
-        from bson import ObjectId
-        user_id = ObjectId(get_jwt_identity())
-        
-        # Check cache first
-        cached_history = get_cached_user_history(str(user_id))
-        if cached_history:
-            print(f"🎯 Cache hit for user history: {str(user_id)[:8]}...")
-            return jsonify({
-                'success': True,
-                'history': cached_history,
-                'total': len(cached_history),
-                'cached': True
-            })
-        
-        # Get user's prediction history from database
+        # Get all prediction history from database
         history = db.get_collection('history').find(
-            {'user_id': user_id},
-            {'_id': 0, 'user_id': 0}
+            {},
+            {'_id': 0}
         ).sort('timestamp', -1).limit(50)
         
         history_list = list(history)
@@ -325,14 +304,10 @@ def get_prediction_history():
             if 'timestamp' in record:
                 record['timestamp'] = record['timestamp'].isoformat()
         
-        # Cache the result (30 minutes)
-        cache_user_history(str(user_id), history_list, 1800)
-        
         return jsonify({
             'success': True,
             'history': history_list,
-            'total': len(history_list),
-            'cached': False
+            'total': len(history_list)
         })
     except Exception as e:
         print(f"❌ Error fetching history: {e}")
