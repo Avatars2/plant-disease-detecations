@@ -17,12 +17,5 @@
       "maxDuration": 30,
       "runtime": "python3.12"
     }
-  },
-  "excludedPaths": [
-    "backend/model.h5",
-    "backend/__pycache__",
-    "backend/venv",
-    "backend/.venv",
-    "backend/uploads"
-  ]
+  }
 }

@@ -1,0 +1,11 @@
+backend/model.h5
+backend/__pycache__/
+backend/venv/
+backend/.venv/
+backend/uploads/
+*.pyc
+__pycache__/
+.git/
+.gitignore
+README.md
+.DS_Store
