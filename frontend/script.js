@@ -1,5 +1,5 @@
-// API Base URL
-const API_BASE_URL = 'http://localhost:5000/api';
+// API Base URL - Use environment variable or fallback
+const API_BASE_URL = window.location.protocol + '//' + window.location.host + '/api';
 
 // DOM Elements
 const loginForm = document.getElementById('loginForm');
