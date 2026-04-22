@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
 Cache Manager for Plant Disease Detection
-Redis-based caching for improved performance
+Memory-based caching for improved performance
 """
 
-import redis
 import json
 import pickle
 import hashlib
@@ -17,34 +16,12 @@ load_dotenv()
 
 class CacheManager:
     def __init__(self):
-        self.redis_client = None
         self.cache_enabled = True
         self.default_ttl = 3600  # 1 hour
         self.memory_cache = {}
         self.memory_cache_size = 1000  # Limit memory cache size
         
-        # Initialize Redis connection
-        self.init_redis()
-    
-    def init_redis(self):
-        """Initialize Redis connection"""
-        try:
-            redis_url = os.getenv('REDIS_URL', 'redis://localhost:6379')
-            self.redis_client = redis.from_url(
-                redis_url,
-                decode_responses=False,
-                socket_timeout=5,
-                socket_connect_timeout=5
-            )
-            
-            # Test connection
-            self.redis_client.ping()
-            print("✅ Redis cache initialized successfully")
-            
-        except Exception as e:
-            print(f"⚠️ Redis not available, using memory cache: {e}")
-            self.redis_client = None
-            self.memory_cache = {}
+        print("✅ Memory cache initialized successfully")
     
     def generate_cache_key(self, prefix, *args, **kwargs):
         """Generate cache key from arguments"""

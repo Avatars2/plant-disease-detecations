@@ -18,7 +18,6 @@ MAX_CONTENT_LENGTH=16777216
 
 ### Optional Variables:
 ```
-REDIS_URL=redis://localhost:6379
 MODEL_API_URL=https://your-model-api.com/predict
 MODEL_URL=https://your-model-storage.com/model.h5
 ```
