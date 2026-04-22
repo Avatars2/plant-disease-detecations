@@ -1,4 +1,6 @@
 from app import app
 
 # Vercel serverless handler
-handler = app
+def handler(request):
+    """Vercel serverless function handler"""
+    return app(request)

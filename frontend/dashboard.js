@@ -207,7 +207,13 @@ async function detectDisease() {
         }
     } catch (error) {
         console.error('Detection error:', error);
-        alert('Network error. Please try again.');
+        if (error.response) {
+            alert(`Server error: ${error.response.status} - ${error.response.data?.error || 'Unknown error'}`);
+        } else if (error.request) {
+            alert('Network error: Unable to connect to server. Please check your internet connection.');
+        } else {
+            alert(`Error: ${error.message}`);
+        }
     } finally {
         showLoading(false);
     }
