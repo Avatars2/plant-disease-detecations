@@ -2,22 +2,14 @@ from flask import Blueprint, request, jsonify, current_app
 from werkzeug.utils import secure_filename
 import os
 import sys
-import tensorflow as tf
 import numpy as np
 from PIL import Image
 from datetime import datetime
 from db import db
 import uuid
 import hashlib
-from cache_manager import (
-    cache_result, cache_prediction_result, get_cached_prediction,
-    cache_user_history, get_cached_user_history, cache_model_classes,
-    get_cached_model_classes
-)
-from enhanced_predictor import enhanced_predictor
-from model_ensemble import model_ensemble, confidence_filter
+from simple_predictor import SimplePlantDiseasePredictor
 from functools import lru_cache
-import multiprocessing as mp
 
 predict_bp = Blueprint('predict', __name__)
 
@@ -33,9 +25,8 @@ CLASS_NAMES = [
     'Yellow Leaf Curl Virus', 'Mosaic Virus'
 ]
 
-# Global model variable with lazy loading
-model = None
-model_loaded = False
+# Simple predictor instance
+simple_predictor = SimplePlantDiseasePredictor()
 
 @lru_cache(maxsize=1)
 def get_model_info():
@@ -43,39 +34,9 @@ def get_model_info():
     return {
         'classes': CLASS_NAMES,
         'num_classes': len(CLASS_NAMES),
-        'input_shape': (224, 224, 3)  # Updated to match trained model
+        'input_shape': (224, 224, 3),
+        'model_type': 'simple/external_api'
     }
-
-def load_model():
-    """Load the plant disease detection model with optimized loading"""
-    global model, model_loaded
-    
-    if model_loaded and model is not None:
-        return True
-        
-    try:
-        model_path = os.path.join(os.path.dirname(__file__), '..', 'model.h5')
-        if os.path.exists(model_path):
-            # Optimize model loading for inference
-            model = tf.keras.models.load_model(model_path, compile=False)  # Don't compile for inference
-            
-            # Optimize model for inference
-            try:
-                # Enable XLA compilation for faster inference
-                tf.config.optimizer.set_jit(True)
-                print("✅ XLA compilation enabled for faster inference")
-            except:
-                print("⚠️ XLA compilation not available")
-            
-            model_loaded = True
-            print("✅ Plant disease model loaded successfully")
-            return True
-        else:
-            print("❌ Model file not found")
-            return False
-    except Exception as e:
-        print(f"❌ Error loading model: {e}")
-        return False
 
 def preprocess_image(image_path):
     """Preprocess image for model prediction"""
@@ -104,96 +65,17 @@ def get_image_hash(image_path):
         print(f"❌ Error generating image hash: {e}")
         return None
 
-@cache_result("simple_prediction", ttl=3600)
 def predict_disease_simple(image_path):
-    """Simple and reliable plant disease prediction"""
-    global model
-    
-    if model is None:
-        if not load_model():
-            return {'error': 'Model not available'}
-    
+    """Simple plant disease prediction using lightweight predictor"""
     try:
-        # Preprocess the image
-        processed_image = preprocess_image(image_path)
-        if processed_image is None:
-            return {'error': 'Failed to preprocess image'}
-        
-        # Make prediction
-        predictions = model.predict(processed_image, verbose=0)
-        
-        if len(predictions) == 0 or len(predictions[0]) == 0:
-            return {'error': 'Empty prediction result'}
-        
-        # Get top prediction
-        predicted_class_index = np.argmax(predictions[0])
-        confidence = float(np.max(predictions[0]))
-        
-        # Safety check for class index
-        if predicted_class_index >= len(CLASS_NAMES):
-            return {'error': f'Invalid class index: {predicted_class_index}'}
-        
-        predicted_class = CLASS_NAMES[predicted_class_index]
-        
-        return {
-            'predicted_disease': predicted_class,
-            'confidence': round(float(confidence) * 100, 2),  # Convert from 0-1 to percentage
-            'class_index': int(predicted_class_index),
-            'prediction_method': 'simple',
-            'timestamp': datetime.utcnow().isoformat(),
-            'status': 'success' if confidence > 0.5 else 'low_confidence'
-        }
-        
+        return simple_predictor.predict_from_image(image_path)
     except Exception as e:
-        print(f"❌ Error in simple prediction: {e}")
+        print(f"â Error in simple prediction: {e}")
         return {'error': f'Prediction failed: {str(e)}'}
 
-@cache_result("prediction", ttl=3600)
 def predict_disease(image_path):
-    """Predict plant disease using real ML model with caching (legacy)"""
-    global model
-    
-    if model is None:
-        if not load_model():
-            return None
-    
-    try:
-        # Generate image hash for caching
-        image_hash = get_image_hash(image_path)
-        if not image_hash:
-            return None
-        
-        # Check cache first
-        cached_result = get_cached_prediction(image_hash)
-        if cached_result:
-            print(f"🎯 Cache hit for image: {image_hash[:8]}...")
-            return cached_result
-        
-        # Preprocess the image
-        processed_image = preprocess_image(image_path)
-        if processed_image is None:
-            return None
-        
-        # Make prediction
-        predictions = model.predict(processed_image)
-        predicted_class_index = np.argmax(predictions[0])
-        confidence = float(np.max(predictions[0]))
-        predicted_class = CLASS_NAMES[predicted_class_index]
-        
-        result = {
-            'disease': predicted_class,
-            'confidence': confidence,
-            'class_index': int(predicted_class_index),
-            'image_hash': image_hash
-        }
-        
-        # Cache the result
-        cache_prediction_result(image_hash, result, 3600)
-        
-        return result
-    except Exception as e:
-        print(f"❌ Error making prediction: {e}")
-        return None
+    """Legacy prediction method - now uses simple predictor"""
+    return predict_disease_simple(image_path)
 
 @predict_bp.route('/upload', methods=['POST'])
 def upload_and_predict():
@@ -216,46 +98,19 @@ def upload_and_predict():
         
         file.save(file_path)
         
-        # Use simple and reliable prediction first
+        # Use simple prediction
         prediction_result = predict_disease_simple(file_path)
         
         if 'error' in prediction_result:
-            # Try enhanced prediction as fallback
-            print("⚠️ Simple prediction failed, trying enhanced method...")
-            try:
-                from enhanced_predictor import enhanced_predictor
-                prediction_result = enhanced_predictor.predict_with_confidence_filtering(file_path)
-                if 'error' in prediction_result:
-                    os.remove(file_path)
-                    return jsonify({'error': 'Failed to process image or make prediction'}), 500
-            except Exception as e:
-                print(f"❌ Enhanced prediction also failed: {e}")
-                os.remove(file_path)
-                return jsonify({'error': 'Failed to process image or make prediction'}), 500
+            os.remove(file_path)
+            return jsonify({'error': 'Failed to process image or make prediction'}), 500
         
-        # Extract prediction details (handle both simple and enhanced formats)
-        if 'predicted_disease' in prediction_result:
-            # Simple prediction format
-            predicted_class = prediction_result['predicted_disease']
-            confidence = prediction_result['confidence']  # Already in percentage
-            predicted_class_index = prediction_result.get('class_index', 0)
-            prediction_status = prediction_result.get('status', 'unknown')
-            all_predictions = [prediction_result]
-        elif 'top_prediction' in prediction_result:
-            # Enhanced prediction format
-            top_pred = prediction_result['top_prediction']
-            predicted_class = top_pred['class']
-            confidence = top_pred['confidence']  # Already in percentage
-            predicted_class_index = top_pred['class_index']
-            prediction_status = prediction_result.get('status', 'unknown')
-            all_predictions = prediction_result.get('predictions', [])
-        else:
-            # Fallback to legacy format
-            predicted_class = prediction_result['disease']
-            confidence = prediction_result['confidence']
-            predicted_class_index = prediction_result['class_index']
-            prediction_status = 'confident'
-            all_predictions = [prediction_result]
+        # Extract prediction details
+        predicted_class = prediction_result.get('predicted_class', 'Unknown')
+        confidence = prediction_result.get('confidence', 0.0)
+        predicted_class_index = CLASS_NAMES.index(predicted_class) if predicted_class in CLASS_NAMES else 0
+        prediction_status = 'success' if confidence > 0.6 else 'low_confidence'
+        all_predictions = [prediction_result]
         
         result = {
             'filename': unique_filename,
@@ -274,13 +129,13 @@ def upload_and_predict():
             'success': True,
             'prediction': {
                 'disease': predicted_class,
-                'confidence': round(confidence, 2),  # Already in percentage
+                'confidence': round(confidence * 100, 2),  # Convert to percentage
                 'class_index': int(predicted_class_index),
                 'status': prediction_status,
-                'recommendation': prediction_result.get('recommendation', ''),
+                'recommendation': '',
                 'all_predictions': all_predictions,
-                'method': prediction_result.get('prediction_method', 'standard'),
-                'ensemble_used': prediction_result.get('ensemble_used', False)
+                'method': 'simple',
+                'ensemble_used': False
             }
         }), 200
     except Exception as e:
