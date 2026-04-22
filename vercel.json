@@ -2,20 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "backend/app.py",
+      "src": "backend/api/__init__.py",
       "use": "@vercel/python"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "backend/app.py"
+      "dest": "backend/api/__init__.py"
     }
-  ],
-  "functions": {
-    "backend/app.py": {
-      "maxDuration": 30,
-      "runtime": "python3.12"
-    }
-  }
+  ]
 }

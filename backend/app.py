@@ -34,5 +34,9 @@ def not_found(e):
 def internal_error(e):
     return jsonify({'error': 'Internal server error'}), 500
 
+# Vercel serverless handler
+def handler(environ, start_response):
+    return app(environ, start_response)
+
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
