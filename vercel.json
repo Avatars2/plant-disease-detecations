@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/app.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "backend/app.py"
+    }
+  ],
+  "functions": {
+    "backend/app.py": {
+      "maxDuration": 30,
+      "runtime": "python3.12"
+    }
+  },
+  "excludedPaths": [
+    "backend/model.h5",
+    "backend/__pycache__",
+    "backend/venv",
+    "backend/.venv",
+    "backend/uploads"
+  ]
+}
